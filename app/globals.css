@@ -158,6 +158,41 @@ a.card:hover,
   transform: translateY(0);
 }
 
+/* Portfolio heatmap tiles (app/agent/[id]/positions/PortfolioHeatmap.tsx):
+   hover brightens the tile and reveals a details tooltip. Pure-CSS so the
+   component itself can stay a server component. */
+.heatmap-tile {
+  transition: filter 0.15s var(--ease);
+}
+.heatmap-tile:hover {
+  filter: brightness(1.18);
+  z-index: 5;
+}
+.heatmap-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s var(--ease);
+  z-index: 20;
+  box-shadow: var(--shadow-card-hover);
+}
+.heatmap-tile:hover .heatmap-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
 .btn-primary {
   border: none;
   border-radius: var(--radius-sm);
