@@ -4,7 +4,7 @@ import { getAgentMeta } from "../../../../lib/agents";
 import { fmtMoney, fmtTime } from "../../../run-helpers";
 import AgentSubNav from "../../../agent-sub-nav";
 import { getTickerName } from "../../../../lib/ticker-names";
-import { PortfolioPieChart } from "./PieChart";
+import { AllocationView } from "./AllocationView";
 import { DaySparkline } from "./DaySparkline";
 import { fetchTodaySeries, type QuotePoint } from "../../../../lib/quotes";
 
@@ -242,7 +242,7 @@ export default async function PositionsPage({ params }: { params: Promise<{ id: 
             ) : null}
           </div>
 
-          <PortfolioPieChart positions={positions} totalMarketValue={totalMarketValue} />
+          <AllocationView positions={positions} totalMarketValue={totalMarketValue} accent={agent.accent} />
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {positions.map((p) => (
