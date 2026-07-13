@@ -29,13 +29,30 @@ export async function adminSaveInstructions(agentId: string, content: string): P
   if (!res.ok) throw new Error(`Failed to save instructions: ${res.status}`);
 }
 
-export async function adminSaveSubscription(endpoint: string, p256dh: string, auth: string): Promise<void> {
+export type NotifyPrefs = { trades: boolean; failures: boolean; risk: boolean; other: boolean };
+
+export async function adminSaveSubscription(
+  endpoint: string,
+  p256dh: string,
+  auth: string,
+  prefs?: NotifyPrefs
+): Promise<void> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/agent_push_subscriptions`, {
     method: "POST",
     headers: { ...adminHeaders(), Prefer: "resolution=merge-duplicates" },
-    body: JSON.stringify({ endpoint, p256dh, auth }),
+    body: JSON.stringify(prefs ? { endpoint, p256dh, auth, prefs } : { endpoint, p256dh, auth }),
   });
   if (!res.ok) throw new Error(`Failed to save subscription: ${res.status}`);
+}
+
+// Update just the prefs on an existing subscription (the bell popover's
+// checkboxes) without needing the p256dh/auth keys re-sent.
+export async function adminUpdateSubscriptionPrefs(endpoint: string, prefs: NotifyPrefs): Promise<void> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/agent_push_subscriptions?endpoint=eq.${encodeURIComponent(endpoint)}`,
+    { method: "PATCH", headers: adminHeaders(), body: JSON.stringify({ prefs }) }
+  );
+  if (!res.ok) throw new Error(`Failed to update subscription prefs: ${res.status}`);
 }
 
 export async function adminDeleteSubscription(endpoint: string): Promise<void> {
@@ -46,11 +63,11 @@ export async function adminDeleteSubscription(endpoint: string): Promise<void> {
   if (!res.ok) throw new Error(`Failed to delete subscription: ${res.status}`);
 }
 
-export type PushSubscriptionRow = { endpoint: string; p256dh: string; auth: string };
+export type PushSubscriptionRow = { endpoint: string; p256dh: string; auth: string; prefs: NotifyPrefs | null };
 
 export async function adminGetAllSubscriptions(): Promise<PushSubscriptionRow[]> {
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/agent_push_subscriptions?select=endpoint,p256dh,auth`,
+    `${SUPABASE_URL}/rest/v1/agent_push_subscriptions?select=endpoint,p256dh,auth,prefs`,
     { headers: adminHeaders(), cache: "no-store" }
   );
   if (!res.ok) throw new Error(`Failed to load subscriptions: ${res.status}`);

@@ -21,6 +21,15 @@ export type AgentMeta = {
   // Hermes whose account started at $10k rather than $100k, so the three
   // agents appear on the same visual scale. Return percentages are unaffected.
   displayScale?: number;
+  // Per-position stop-loss backstop (max_position_loss_pct in the trading
+  // agent's config.py) — mirrored here so the Positions tab can show how
+  // close each position sits to its code-enforced disaster brake. Keep in
+  // sync with config.py when those change.
+  maxPositionLossPct?: number;
+  // True for agents whose universe includes crypto pairs — they get a real
+  // off-hours/weekend decision cycle (crypto only) in addition to the
+  // market-hours one, and the dashboard badges that state.
+  tradesCrypto?: boolean;
 };
 
 const STATIC_AGENTS: Record<string, AgentMeta> = {
@@ -31,6 +40,7 @@ const STATIC_AGENTS: Record<string, AgentMeta> = {
     description: "Runs every 15 minutes during market hours. Willing to take real positions on conviction.",
     accent: "var(--accent-buy)",
     accentDim: "var(--accent-buy-dim)",
+    maxPositionLossPct: 0.08,
   },
   helios: {
     id: "helios",
@@ -39,14 +49,16 @@ const STATIC_AGENTS: Record<string, AgentMeta> = {
     description: "Runs every 15 minutes during market hours, same cadence as Plutus and Hermes. Smaller positions, bigger cash buffer, slower to act.",
     accent: "var(--accent-helios)",
     accentDim: "var(--accent-helios-dim)",
+    maxPositionLossPct: 0.06,
   },
   hermes: {
     id: "hermes",
     label: "Hermes",
     tagline: "day trader, news-catalyst driven",
-    description: "Runs every 15 min. Uses Gemini with live Google Search grounding to trade on fresh earnings, FDA decisions, and other discrete market catalysts — long or short, no cap on trades per run.",
+    description: "Runs every 15 min. Trades on fresh earnings, FDA decisions, and other discrete news catalysts from a headline-grounded briefing — long or short, no cap on trades per run.",
     accent: "var(--accent-hermes)",
     accentDim: "var(--accent-hermes-dim)",
+    maxPositionLossPct: 0.05,
     // Hermes' paper account started at $10k, not $100k like Plutus/Helios.
     // No displayScale — the dashboard shows its real $10k-based figures
     // rather than multiplying them up to look like a $100k account.
@@ -55,9 +67,11 @@ const STATIC_AGENTS: Record<string, AgentMeta> = {
     id: "eris",
     label: "Eris",
     tagline: "chaos trader, meme stocks & memecoins",
-    description: "Runs every 15 min. Trades meme stocks (long or short) and 30+ crypto pairs (long-only — crypto is spot-only on Alpaca) on retail/Reddit sentiment and momentum, no cap on trades per run.",
+    description: "Runs every 15 min during market hours plus a crypto-only off-hours cycle nights/weekends. Trades meme stocks (long or short) and 30+ crypto pairs (long-only — crypto is spot-only on Alpaca) on retail sentiment and momentum.",
     accent: "var(--accent-eris)",
     accentDim: "var(--accent-eris-dim)",
+    maxPositionLossPct: 0.10,
+    tradesCrypto: true,
     // No displayScale — unlike Hermes, Eris' paper account started at the
     // standard $100k, same as Plutus/Helios (confirmed against the live
     // account). It was wrongly assumed to be $10k like Hermes when this

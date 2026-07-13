@@ -61,6 +61,39 @@ export function triggerBadge(trigger: string | null) {
   return null;
 }
 
+// Badge for AI decision runs made while the equity market was closed. Two
+// flavors, told apart by ET wall-clock time: the once-daily pre-market
+// review (8:30–9:30am ET window) and the crypto-only off-hours cycle
+// (nights/weekends — Eris). Idle check-ins don't get here (no model_used).
+export function offHoursBadge(run: Run) {
+  if (run.market_open !== false || !run.model_used) return null;
+  const et = new Date(new Date(run.run_at).toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const mins = et.getHours() * 60 + et.getMinutes();
+  const day = et.getDay();
+  const isPremarket = day >= 1 && day <= 5 && mins >= 500 && mins < 570; // 8:20–9:30 ET
+  const label = isPremarket ? "PRE-MARKET" : "OFF-HOURS · CRYPTO";
+  const title = isPremarket
+    ? "The once-daily pre-market review — one chance to queue a buy ahead of the open"
+    : "Crypto-only decision cycle — equity markets were closed, only crypto orders can execute";
+  return (
+    <span
+      style={{
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: "0.06em",
+        padding: "2px 6px",
+        borderRadius: 4,
+        color: isPremarket ? "var(--accent-hold)" : "var(--accent-eris)",
+        background: isPremarket ? "var(--accent-hold-dim)" : "var(--accent-eris-dim)",
+        whiteSpace: "nowrap",
+      }}
+      title={title}
+    >
+      {label}
+    </span>
+  );
+}
+
 export function fmtTime(iso: string) {
   return (
     new Date(iso).toLocaleString("en-US", {
@@ -297,9 +330,10 @@ export function RunEntry({
             marginBottom: 8,
           }}
         >
-          <span style={{ fontSize: 13, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 13, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             {fmtTime(run.run_at)}
             {triggerBadge(run.trigger)}
+            {offHoursBadge(run)}
           </span>
           <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
             equity {fmtMoney(run.account_equity)} · cash {fmtMoney(run.account_cash)} ·{" "}
