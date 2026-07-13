@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
-import { getPositions, getEntryDecisions, type Position, type EntryDecision } from "../../../../lib/supabase";
+import { getPositions, getEntryDecisions, getOpenOrders, type Position, type EntryDecision, type OpenOrder } from "../../../../lib/supabase";
 import { getAgentMeta } from "../../../../lib/agents";
 import { fmtMoney, fmtTime } from "../../../run-helpers";
 import AgentSubNav from "../../../agent-sub-nav";
 import { getTickerName } from "../../../../lib/ticker-names";
+import { sectorOf } from "../../../../lib/sectors";
+import { Badge, MeterBar, SectionHeader } from "../../../ui";
 import { AllocationView } from "./AllocationView";
 import { DaySparkline } from "./DaySparkline";
 import { fetchTodaySeries, type QuotePoint } from "../../../../lib/quotes";
@@ -13,11 +15,13 @@ function PositionCard({
   accent,
   todaySeries,
   entry,
+  maxLossPct,
 }: {
   position: Position;
   accent: string;
   todaySeries: QuotePoint[];
   entry?: EntryDecision;
+  maxLossPct?: number;
 }) {
   const isShort = position.qty < 0;
   const pl = position.unrealized_pl_pct;
@@ -72,8 +76,9 @@ function PositionCard({
             </span>
           ) : null}
         </span>
-        <span style={{ fontSize: 13, color: "var(--text-muted)", flexShrink: 0 }}>
-          {Math.abs(position.qty)} sh
+        <span style={{ display: "flex", alignItems: "baseline", gap: 8, flexShrink: 0 }}>
+          <Badge>{sectorOf(position.symbol)}</Badge>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{Math.abs(position.qty)} sh</span>
         </span>
       </div>
 
@@ -146,6 +151,21 @@ function PositionCard({
         </details>
       ) : null}
 
+      {maxLossPct != null && pl != null && pl < 0 ? (
+        <div style={{ marginTop: 12 }} title={`Code-enforced stop-loss backstop closes this position at -${(maxLossPct * 100).toFixed(0)}%`}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, letterSpacing: "0.05em", color: "var(--text-faint)", marginBottom: 3 }}>
+            <span>DISTANCE TO STOP-LOSS BACKSTOP</span>
+            <span>
+              {pl.toFixed(1)}% / -{(maxLossPct * 100).toFixed(0)}%
+            </span>
+          </div>
+          <MeterBar
+            fraction={Math.abs(pl) / (maxLossPct * 100)}
+            color={Math.abs(pl) / (maxLossPct * 100) > 0.75 ? "var(--accent-sell)" : "var(--accent-hold)"}
+          />
+        </div>
+      ) : null}
+
       <div style={{ height: 3, borderRadius: 2, background: accent, opacity: 0.5, marginTop: 12 }} />
     </div>
   );
@@ -157,9 +177,10 @@ export default async function PositionsPage({ params }: { params: Promise<{ id: 
   if (!agent) notFound();
 
   let positions: Position[] = [];
+  let openOrders: OpenOrder[] = [];
   let loadError: string | null = null;
   try {
-    positions = await getPositions(id);
+    [positions, openOrders] = await Promise.all([getPositions(id), getOpenOrders(id)]);
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Unknown error";
   }
@@ -244,6 +265,8 @@ export default async function PositionsPage({ params }: { params: Promise<{ id: 
 
           <AllocationView positions={positions} totalMarketValue={totalMarketValue} accent={agent.accent} />
 
+          <SectorBreakdown positions={positions} totalMarketValue={totalMarketValue} />
+
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {positions.map((p) => (
               <PositionCard
@@ -252,11 +275,106 @@ export default async function PositionsPage({ params }: { params: Promise<{ id: 
                 accent={agent.accent}
                 todaySeries={todaySeriesBySymbol[p.symbol] || []}
                 entry={entryBySymbol[p.symbol]}
+                maxLossPct={agent.maxPositionLossPct}
               />
             ))}
           </div>
         </>
       )}
+
+      <OpenOrdersSection orders={openOrders} accent={agent.accent} />
     </div>
+  );
+}
+
+// Exposure per correlation bucket (lib/sectors.ts — same buckets the trading
+// agent's sector-concentration cap uses), so "diversified across 8 tickers
+// that are all one crypto bet" is visible at a glance.
+function SectorBreakdown({ positions, totalMarketValue }: { positions: Position[]; totalMarketValue: number }) {
+  if (positions.length < 2 || totalMarketValue <= 0) return null;
+  const bySector = new Map<string, number>();
+  for (const p of positions) {
+    const s = sectorOf(p.symbol);
+    bySector.set(s, (bySector.get(s) ?? 0) + Math.abs(p.market_value ?? 0));
+  }
+  const rows = [...bySector.entries()].sort((a, b) => b[1] - a[1]);
+  return (
+    <div
+      className="card"
+      style={{
+        border: "1px solid var(--border-hairline)",
+        borderRadius: 10,
+        background: "var(--bg-surface)",
+        padding: "12px 16px",
+        marginBottom: 16,
+        display: "flex",
+        gap: 14,
+        flexWrap: "wrap",
+      }}
+    >
+      {rows.map(([sector, value]) => (
+        <span key={sector} style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{sector}</span>{" "}
+          {((value / totalMarketValue) * 100).toFixed(0)}%
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// The agent's currently open (unfilled) orders — mostly GTC limit orders it
+// placed as price targets. These reserve shares/cash while they sit, and
+// until agent_open_orders existed they were invisible outside the run log.
+function OpenOrdersSection({ orders, accent }: { orders: OpenOrder[]; accent: string }) {
+  if (orders.length === 0) return null;
+  const snapshotAt = orders[0].snapshot_at;
+  return (
+    <>
+      <SectionHeader>
+        Open (unfilled) orders · {orders.length} · as of{" "}
+        {new Date(snapshotAt).toLocaleString("en-US", {
+          timeZone: "America/New_York",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        })}{" "}
+        ET
+      </SectionHeader>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {orders.map((o) => (
+          <div
+            key={o.id}
+            className="card"
+            style={{
+              border: "1px solid var(--border-hairline)",
+              borderRadius: 10,
+              background: "var(--bg-surface)",
+              padding: "10px 14px",
+              display: "flex",
+              alignItems: "baseline",
+              gap: 10,
+              flexWrap: "wrap",
+              fontSize: 13,
+            }}
+          >
+            <Badge tone={o.side === "buy" ? "buy" : "sell"}>
+              {o.side ?? "?"} {o.order_type ?? ""}
+            </Badge>
+            <span style={{ fontWeight: 700 }}>{o.symbol}</span>
+            {o.qty != null ? <span style={{ color: "var(--text-muted)" }}>{o.qty} sh</span> : null}
+            {o.notional != null ? <span style={{ color: "var(--text-muted)" }}>{fmtMoney(o.notional)}</span> : null}
+            {o.limit_price != null ? (
+              <span style={{ color: accent }}>limit {fmtMoney(o.limit_price)}</span>
+            ) : null}
+            {o.age_minutes != null ? (
+              <span style={{ marginLeft: "auto", fontSize: 11, color: o.age_minutes > 480 ? "var(--accent-hold)" : "var(--text-faint)" }}>
+                working {o.age_minutes < 60 ? `${Math.round(o.age_minutes)}m` : `${(o.age_minutes / 60).toFixed(1)}h`}
+              </span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

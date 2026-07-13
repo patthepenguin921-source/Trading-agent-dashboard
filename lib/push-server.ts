@@ -20,6 +20,21 @@ export function requireNotifySecret(): string {
   return requireEnv("NOTIFY_SECRET");
 }
 
+// Which preference bucket a notification falls into, inferred from its
+// title (the Python agent sends e.g. "Eris: made a move", "Hermes: Run
+// failed", "Eris: stop-loss backstop hit"). Titles are the only signal the
+// agent currently sends — if it ever gains an explicit event-type field,
+// prefer that over this inference.
+export type NotifyEventKind = "trades" | "failures" | "risk" | "other";
+
+export function classifyEvent(title: string): NotifyEventKind {
+  const t = title.toLowerCase();
+  if (t.includes("stop-loss") || t.includes("breaker")) return "risk";
+  if (t.includes("fail") || t.includes("bad account data") || t.includes("anomaly")) return "failures";
+  if (t.includes("move")) return "trades";
+  return "other";
+}
+
 export async function sendToAllSubscriptions(title: string, body: string, url = "/") {
   const webpush = (await import("web-push")).default;
   const { adminGetAllSubscriptions, adminDeleteSubscription } = await import("./supabase-admin");
@@ -35,7 +50,11 @@ export async function sendToAllSubscriptions(title: string, body: string, url = 
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
   const payload = JSON.stringify({ title, body, url });
 
-  const subs = await adminGetAllSubscriptions();
+  const kind = classifyEvent(title);
+  const allSubs = await adminGetAllSubscriptions();
+  // No prefs row (pre-migration subscription) means "send everything" —
+  // matches the previous behavior exactly.
+  const subs = allSubs.filter((s) => s.prefs == null || s.prefs[kind] !== false);
   let sent = 0;
   let pruned = 0;
   const errors: string[] = [];
@@ -60,5 +79,5 @@ export async function sendToAllSubscriptions(title: string, body: string, url = 
     })
   );
 
-  return { subscriberCount: subs.length, sent, pruned, errors };
+  return { subscriberCount: allSubs.length, matched: subs.length, kind, sent, pruned, errors };
 }

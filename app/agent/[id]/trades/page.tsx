@@ -6,6 +6,7 @@ import { computeTradeStats, fmtStatPct, fmtRatio } from "../../../../lib/analyti
 import { fmtTime } from "../../../run-helpers";
 import { getTickerName } from "../../../../lib/ticker-names";
 import AgentSubNav from "../../../agent-sub-nav";
+import CsvExportButton from "../../../csv-export-button";
 
 function pnlColor(pnl: number) {
   return pnl === 0 ? "var(--text-muted)" : pnl > 0 ? "var(--accent-buy)" : "var(--accent-sell)";
@@ -231,6 +232,10 @@ export default async function TradesPage({
             />
           </div>
 
+          <CumulativePnlChart trades={trades} accent={agent.accent} />
+
+          <ConfidenceCalibration trades={trades} />
+
           {symbolRows.length > 1 ? (
             <details style={{ marginBottom: 20 }}>
               <summary
@@ -285,9 +290,26 @@ export default async function TradesPage({
             </details>
           ) : null}
 
-          <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 10 }}>
-            {trades.length} closed trade{trades.length === 1 ? "" : "s"} · realized P/L is per trade, as a % of
-            the position · tap a row for the exit reasoning
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", fontSize: 12, color: "var(--text-faint)", marginBottom: 10 }}>
+            <span>
+              {trades.length} closed trade{trades.length === 1 ? "" : "s"} · realized P/L is per trade, as a % of
+              the position · tap a row for the exit reasoning
+            </span>
+            <span style={{ marginLeft: "auto" }}>
+              <CsvExportButton
+                filename={`${id}-closed-trades.csv`}
+                rows={trades.map((t) => ({
+                  closed_at: t.created_at,
+                  symbol: t.symbol,
+                  action: t.action,
+                  qty: t.qty,
+                  exit_price: t.exit_price,
+                  realized_pnl_pct: t.realized_pnl_pct,
+                  confidence: t.confidence,
+                  reasoning: t.reasoning,
+                }))}
+              />
+            </span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -309,5 +331,119 @@ export default async function TradesPage({
         </>
       )}
     </div>
+  );
+}
+
+
+// Running sum of realized P/L (%) across closed trades, oldest → newest.
+// The single most honest picture of whether the closing decisions are
+// working: win rate can look fine while this line sinks.
+function CumulativePnlChart({ trades, accent }: { trades: ClosedTrade[]; accent: string }) {
+  if (trades.length < 2) return null;
+  const chronological = [...trades].reverse();
+  const values: number[] = [];
+  for (const t of chronological) values.push((values[values.length - 1] ?? 0) + t.realized_pnl_pct);
+  const w = 600;
+  const h = 120;
+  const min = Math.min(0, ...values);
+  const max = Math.max(0, ...values);
+  const range = max - min || 1;
+  const x = (i: number) => (i / (values.length - 1)) * w;
+  const y = (v: number) => h - ((v - min) / range) * h;
+  const points = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const zeroY = y(0);
+  const final = values[values.length - 1];
+  return (
+    <div
+      className="card"
+      style={{
+        border: "1px solid var(--border-hairline)",
+        borderRadius: 10,
+        background: "var(--bg-surface)",
+        padding: "14px 16px",
+        marginBottom: 20,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+        <span style={{ fontSize: 11, letterSpacing: "0.05em", color: "var(--text-faint)" }}>
+          CUMULATIVE REALIZED P/L — {trades.length} CLOSED TRADES
+        </span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: pnlColor(final) }}>{fmtPnl(final)}</span>
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 120 }}>
+        <line x1={0} y1={zeroY} x2={w} y2={zeroY} stroke="var(--border-hairline)" strokeWidth={1} strokeDasharray="4 4" />
+        <polyline
+          points={points}
+          fill="none"
+          stroke={accent}
+          strokeWidth={2}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+          pathLength={1}
+          className="chart-line-draw"
+        />
+      </svg>
+    </div>
+  );
+}
+
+// Win rate / expectancy by the confidence the model stated at exit — the
+// model's own calibration. If "high" isn't outperforming "medium", the
+// field isn't tracking real conviction (the 2026-07-09 review found exactly
+// that), and this makes it visible instead of buried in a weekly report.
+function ConfidenceCalibration({ trades }: { trades: ClosedTrade[] }) {
+  const byLevel = new Map<string, number[]>();
+  for (const t of trades) {
+    const level = t.confidence || "unstated";
+    byLevel.set(level, [...(byLevel.get(level) ?? []), t.realized_pnl_pct]);
+  }
+  const order = ["high", "medium", "low", "unstated"];
+  const rows = [...byLevel.entries()]
+    .filter(([, pnls]) => pnls.length >= 2)
+    .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
+  if (rows.length < 2) return null;
+  return (
+    <details style={{ marginBottom: 20 }}>
+      <summary style={{ fontSize: 11, letterSpacing: "0.05em", color: "var(--text-faint)", cursor: "pointer", userSelect: "none" }}>
+        CONFIDENCE CALIBRATION — DOES &ldquo;HIGH&rdquo; ACTUALLY MEAN ANYTHING?
+      </summary>
+      <div
+        className="card"
+        style={{
+          marginTop: 10,
+          border: "1px solid var(--border-hairline)",
+          borderRadius: 10,
+          background: "var(--bg-surface)",
+          padding: "6px 14px",
+        }}
+      >
+        {rows.map(([level, pnls]) => {
+          const wins = pnls.filter((p) => p > 0).length;
+          const expectancy = pnls.reduce((s, p) => s + p, 0) / pnls.length;
+          return (
+            <div
+              key={level}
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 10,
+                padding: "7px 0",
+                borderBottom: "1px solid var(--border-hairline)",
+                fontSize: 13,
+              }}
+            >
+              <span style={{ fontWeight: 600, minWidth: 76, textTransform: "capitalize" }}>{level}</span>
+              <span style={{ color: "var(--text-faint)", fontSize: 11 }}>
+                {pnls.length} trades · {Math.round((wins / pnls.length) * 100)}% won
+              </span>
+              <span style={{ marginLeft: "auto", fontWeight: 700, color: pnlColor(expectancy) }}>
+                {fmtPnl(expectancy)} / trade
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </details>
   );
 }

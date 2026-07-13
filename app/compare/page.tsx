@@ -15,6 +15,11 @@ import {
 } from "./compare-helpers";
 import { type BenchmarkDef } from "./DualReturnChartClient";
 import ChartModeView from "./ChartModeView";
+import Leaderboard, { type LeaderboardRow } from "./Leaderboard";
+import CalendarHeatmap from "./CalendarHeatmap";
+import DrawdownStrip from "./DrawdownStrip";
+import { computeAdvancedStats } from "../../lib/analytics";
+import { isSameEtDay } from "../run-helpers";
 import { fetchRangeSeries } from "../../lib/quotes";
 import EquityRefresher from "../equity-refresher";
 
@@ -245,11 +250,42 @@ export default async function ComparePage() {
     </>
   ) : undefined;
 
+  // Leaderboard rows: basic stats + risk-adjusted numbers per agent.
+  const leaderboardRows: LeaderboardRow[] = results
+    .filter(({ runs }) => runs.length > 0)
+    .map(({ agent, runs }) => {
+      const basic = computeAgentStats(runs);
+      const adv = computeAdvancedStats(runs);
+      const latest = runs[0];
+      const chronological = [...runs].reverse();
+      const todayFirst = chronological.find(
+        (r) => r.account_equity != null && isSameEtDay(r.run_at, latest.run_at)
+      );
+      const todayPct =
+        basic.currentEquity != null && todayFirst?.account_equity
+          ? ((basic.currentEquity - todayFirst.account_equity) / todayFirst.account_equity) * 100
+          : null;
+      return {
+        id: agent.id,
+        label: agent.label,
+        accent: agent.accent,
+        returnPct: basic.totalReturnPct,
+        todayPct,
+        sharpe: adv.sharpe,
+        profitFactor: adv.profitFactor,
+        winRate: adv.winRate,
+        maxDrawdownPct: adv.maxDrawdownPct,
+        closedTrades: adv.closedTrades,
+      };
+    });
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
         <EquityRefresher />
       </div>
+
+      <Leaderboard rows={leaderboardRows} />
 
       <ChartModeView
         chartHeader={legend}
@@ -272,6 +308,11 @@ export default async function ComparePage() {
         }
         belowDaily={belowDaily}
       />
+
+      <div style={{ marginTop: 24 }}>
+        <CalendarHeatmap agents={agents} runsByAgent={runsByAgent} />
+        <DrawdownStrip agents={agents} runsByAgent={runsByAgent} />
+      </div>
     </div>
   );
 }

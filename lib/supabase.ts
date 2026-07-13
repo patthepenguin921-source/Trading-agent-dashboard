@@ -285,6 +285,83 @@ export async function getWeeklyReports(agentId: string, limit = 12): Promise<Wee
   return res.json();
 }
 
+// Open (unfilled) orders — snapshot written by the trading agent's
+// store._log_open_orders() at the end of every decision run. These are the
+// GTC limit orders the agent is actively managing; they reserve shares and
+// cash while pending, which is why they're worth surfacing.
+export type OpenOrder = {
+  id: number;
+  agent_id: string;
+  symbol: string;
+  side: string | null;       // buy | sell
+  order_type: string | null; // market | limit
+  qty: number | null;
+  notional: number | null;
+  limit_price: number | null;
+  age_minutes: number | null; // as of snapshot_at
+  snapshot_at: string;
+};
+
+export async function getOpenOrders(agentId: string): Promise<OpenOrder[]> {
+  const params = new URLSearchParams({
+    agent_id: `eq.${agentId}`,
+    select: "*",
+    order: "symbol.asc",
+  });
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/agent_open_orders?${params.toString()}`, {
+    headers: headers(),
+    cache: "no-store",
+  });
+  if (!res.ok) return []; // additive info — never break the page over it
+  return res.json();
+}
+
+// The agent's latest news/sentiment briefing (agent_news_context) — the
+// exact text fed into its decision prompt, refreshed on the agent's own
+// news_refresh_minutes cadence. updated_at drives the staleness warning.
+export type NewsContext = { content: string; updated_at: string };
+
+export async function getNewsContext(agentId: string): Promise<NewsContext | null> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/agent_news_context?agent_id=eq.${agentId}&select=content,updated_at`,
+    { headers: headers(), cache: "no-store" }
+  );
+  if (!res.ok) return null;
+  const rows = await res.json();
+  return rows[0] ?? null;
+}
+
+// Cross-agent activity feed for the overview page: the most recent executed
+// decisions (any agent), newest first. trading_agent_decisions carries
+// agent_id directly, so no join through runs is needed.
+export type RecentDecision = {
+  id: number;
+  agent_id: string;
+  symbol: string;
+  action: string;
+  qty: number | null;
+  realized_pnl_pct: number | null;
+  confidence: string | null;
+  reasoning: string | null;
+  created_at: string;
+};
+
+export async function getRecentDecisions(limit = 14): Promise<RecentDecision[]> {
+  const params = new URLSearchParams({
+    order_id: "not.is.null",
+    action: "in.(buy,sell,short,cover)",
+    select: "id,agent_id,symbol,action,qty,realized_pnl_pct,confidence,reasoning,created_at",
+    order: "created_at.desc",
+    limit: String(limit),
+  });
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/trading_agent_decisions?${params.toString()}`, {
+    headers: headers(),
+    cache: "no-store",
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
 // Benchmark (VTI/SPY/QQQ) price data — written by the Python snapshot every
 // minute (Plutus only) via Alpaca's data API; read here by the compare page.
 // This avoids external API calls from Vercel which are blocked for stooq/Yahoo.

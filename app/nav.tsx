@@ -25,22 +25,43 @@ function buildItems(agents: AgentMeta[]): NavItem[] {
   ];
 }
 
-function isMarketOpenNow(): boolean {
+// Which part of the trading day it is, mirroring the agent's own ET
+// wall-clock phases (schedule.py in the trading repo) plus the standard
+// extended-hours windows. Weekends/holidays aside, the agents make equity
+// decisions during "open" and queue pre-open buys during the pre-market
+// review; Eris additionally runs a crypto-only cycle through every other
+// phase, which is why the pill notes crypto is live when equities aren't.
+type MarketPhase = "pre-market" | "open" | "after-hours" | "closed" | "weekend";
+
+function marketPhaseNow(): MarketPhase {
   const now = new Date();
   const nyTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
   const day = nyTime.getDay(); // 0=Sun, 6=Sat
+  if (day === 0 || day === 6) return "weekend";
   const mins = nyTime.getHours() * 60 + nyTime.getMinutes();
-  return day >= 1 && day <= 5 && mins >= 570 && mins < 960; // 9:30–16:00 ET
+  if (mins >= 240 && mins < 570) return "pre-market"; // 4:00–9:30 ET
+  if (mins >= 570 && mins < 960) return "open"; // 9:30–16:00 ET
+  if (mins >= 960 && mins < 1200) return "after-hours"; // 16:00–20:00 ET
+  return "closed";
 }
+
+const PHASE_STYLE: Record<MarketPhase, { label: string; color: string; pulse: boolean }> = {
+  open: { label: "open", color: "var(--accent-buy)", pulse: true },
+  "pre-market": { label: "pre-mkt", color: "var(--accent-hold)", pulse: false },
+  "after-hours": { label: "after-hrs", color: "var(--accent-hold)", pulse: false },
+  weekend: { label: "wknd", color: "var(--text-faint)", pulse: false },
+  closed: { label: "closed", color: "var(--text-faint)", pulse: false },
+};
 
 export default function Nav({ agents }: { agents: AgentMeta[] }) {
   const pathname = usePathname();
   const items = buildItems(agents);
-  const [marketOpen, setMarketOpen] = useState<boolean | null>(null);
+  const [phase, setPhase] = useState<MarketPhase | null>(null);
+  const anyCrypto = agents.some((a) => a.tradesCrypto);
 
   useEffect(() => {
-    setMarketOpen(isMarketOpenNow());
-    const id = setInterval(() => setMarketOpen(isMarketOpenNow()), 60_000);
+    setPhase(marketPhaseNow());
+    const id = setInterval(() => setPhase(marketPhaseNow()), 60_000);
     return () => clearInterval(id);
   }, []);
 
@@ -103,7 +124,7 @@ export default function Nav({ agents }: { agents: AgentMeta[] }) {
                   paper · sim
                 </div>
                 {/* Market status — suppressed until hydrated to avoid SSR mismatch */}
-                {marketOpen !== null && (
+                {phase !== null && (
                   <>
                     <style>{`@keyframes mkt-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }`}</style>
                     <div
@@ -115,7 +136,7 @@ export default function Nav({ agents }: { agents: AgentMeta[] }) {
                         fontFamily: "var(--font-mono)",
                         letterSpacing: "0.07em",
                         textTransform: "uppercase",
-                        color: marketOpen ? "var(--accent-buy)" : "var(--text-faint)",
+                        color: PHASE_STYLE[phase].color,
                       }}
                     >
                       <span
@@ -125,12 +146,42 @@ export default function Nav({ agents }: { agents: AgentMeta[] }) {
                           height: 5,
                           borderRadius: "50%",
                           flexShrink: 0,
-                          background: marketOpen ? "var(--accent-buy)" : "var(--text-faint)",
-                          animation: marketOpen ? "mkt-pulse 2s ease-in-out infinite" : "none",
+                          background: PHASE_STYLE[phase].color,
+                          animation: PHASE_STYLE[phase].pulse ? "mkt-pulse 2s ease-in-out infinite" : "none",
                         }}
                       />
-                      {marketOpen ? "open" : "closed"}
+                      {PHASE_STYLE[phase].label}
                     </div>
+                    {/* When equities aren't trading but an agent trades crypto,
+                        that side of the book is still live — say so. */}
+                    {phase !== "open" && anyCrypto && (
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 10,
+                          fontFamily: "var(--font-mono)",
+                          letterSpacing: "0.07em",
+                          textTransform: "uppercase",
+                          color: "var(--accent-eris)",
+                        }}
+                        title="Eris' crypto pairs trade 24/7 — its off-hours crypto cycle is live now"
+                      >
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: 5,
+                            height: 5,
+                            borderRadius: "50%",
+                            flexShrink: 0,
+                            background: "var(--accent-eris)",
+                            animation: "mkt-pulse 2s ease-in-out infinite",
+                          }}
+                        />
+                        crypto live
+                      </div>
+                    )}
                   </>
                 )}
               </div>
