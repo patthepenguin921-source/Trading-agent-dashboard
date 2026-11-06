@@ -19,7 +19,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
-body { font-family: var(--font-display), system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
 h1, h2, h3 { margin: 0 0 8px; line-height: 1.2; }
 h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); }
@@ -28,7 +28,7 @@ h3 { font-size: 1rem; margin-bottom: 12px; }
 p { margin: 6px 0; }
 button { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
 
-.mono { font-family: var(--font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 .small { font-size: 0.82rem; }
 .up { color: var(--up); }
@@ -61,7 +61,7 @@ main { max-width: 920px; margin: 0 auto; padding: 24px 16px 80px; display: flex;
 .chart svg { width: 100%; height: auto; display: block; }
 .chart .grid { stroke: var(--border); stroke-width: 1; }
 .chart .zero { stroke: var(--muted); stroke-width: 1; opacity: 0.6; }
-.chart .axis { fill: var(--muted); font-size: 11px; font-family: var(--font-mono), monospace; }
+.chart .axis { fill: var(--muted); font-size: 11px; font-family: ui-monospace, Menlo, Consolas, monospace; }
 .chart { margin: 0; }
 .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 0.85rem; color: var(--muted); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
