@@ -1,7 +1,7 @@
 {
-  "name": "Plutus — Paper Trading Agent",
-  "short_name": "Plutus",
-  "description": "Autonomous AI paper trading agent — log, agent brief, and alerts.",
+  "name": "Analyst vs. Monkey",
+  "short_name": "Analyst v Monkey",
+  "description": "Claude analyst vs. random monkey: paper trading scoreboard.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
