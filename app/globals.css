@@ -1,454 +1,95 @@
 :root {
-  --bg-base: #0a0c10;
-  --bg-surface: #12151b;
-  --bg-surface-2: #161a22;
-  --border-hairline: #232838;
-  --text-primary: #e7eaf0;
-  --text-muted: #8088a0;
-  --text-faint: #565d72;
-
-  --accent-buy: #34d399;
-  --accent-buy-dim: #34d3991a;
-  --accent-sell: #fb7185;
-  --accent-sell-dim: #fb71851a;
-  --accent-hold: #fbbf24;
-  --accent-hold-dim: #fbbf241a;
-  --accent-short: #3b82f6;
-  --accent-short-dim: #3b82f61a;
-  --accent-focus: #7dd3fc;
-  --accent-helios: #a78bfa;
-  --accent-helios-dim: #a78bfa1a;
-  --accent-hermes: #f59e0b;
-  --accent-hermes-dim: #f59e0b1a;
-  --accent-eris: #ec4899;
-  --accent-eris-dim: #ec48991a;
-  --accent-benchmark: #94a3b8;
-  --accent-benchmark-dim: #94a3b81a;
-  --accent-benchmark-spy: #60a5fa;
-  --accent-benchmark-spy-dim: #60a5fa1a;
-  --accent-benchmark-qqq: #e879f9;
-  --accent-benchmark-qqq-dim: #e879f91a;
-
-  --font-display: var(--font-space-grotesk), "Space Grotesk", sans-serif;
-  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
-
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -16px rgba(0, 0, 0, 0.55);
-  --shadow-card-hover: 0 2px 4px rgba(0, 0, 0, 0.5), 0 20px 40px -16px rgba(0, 0, 0, 0.65);
+  --bg: #0a0c10;
+  --surface: #12151b;
+  --surface-2: #181c25;
+  --border: #232838;
+  --text: #e7eaf0;
+  --muted: #8a92a8;
+  --up: #34d399;
+  --down: #fb7185;
+  --analyst: #a78bfa;
+  --monkey: #f59e0b;
+  --spy: #94a3b8;
+  --buy: #34d399;
+  --sell: #fb7185;
+  --short: #60a5fa;
+  --cover: #fbbf24;
+  --radius: 14px;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+h1, h2, h3 { margin: 0 0 8px; line-height: 1.2; }
+h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1rem; margin-bottom: 12px; }
+p { margin: 6px 0; }
+button { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  background: var(--bg-base);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-  width: 100%;
-}
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 0.82rem; }
+.up { color: var(--up); }
+.down { color: var(--down); }
+.short { color: var(--short); }
+.spacer { flex: 1; }
 
-/* Soft, fixed ambient glow behind everything — breaks up the flat black
-   without adding any layout weight or scroll-jank (fixed + no pointer
-   events). Sits behind body content via negative z-index. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(560px circle at 12% -6%, var(--accent-buy-dim), transparent 60%),
-    radial-gradient(560px circle at 88% 8%, var(--accent-helios-dim), transparent 60%),
-    radial-gradient(400px circle at 20% 95%, var(--accent-hermes-dim), transparent 60%),
-    radial-gradient(400px circle at 80% 95%, var(--accent-eris-dim), transparent 60%);
-  opacity: 0.7;
-}
+.nav { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 14px 20px; background: rgba(10, 12, 16, 0.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.brand { font-weight: 700; }
+.nav nav { display: flex; gap: 18px; color: var(--muted); }
+.nav nav a:hover { color: var(--text); }
 
-img,
-svg {
-  max-width: 100%;
-}
+main { max-width: 920px; margin: 0 auto; padding: 24px 16px 80px; display: flex; flex-direction: column; gap: 18px; }
+.hero { padding: 8px 0; }
 
-a {
-  color: inherit;
-}
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.agent-card { display: flex; flex-direction: column; gap: 6px; transition: border-color 0.2s; }
+.agent-card.analyst { border-top: 3px solid var(--analyst); }
+.agent-card.monkey { border-top: 3px solid var(--monkey); }
+.agent-card:hover { border-color: var(--muted); }
+.card-top { display: flex; flex-direction: column; }
+.big { font-size: 1.6rem; font-weight: 600; }
+.row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.stats .big { font-size: 1.3rem; }
+.empty { color: var(--muted); padding: 24px 0; text-align: center; }
 
-::selection {
-  background: var(--accent-focus);
-  color: #0a0c10;
-}
+.chart svg { width: 100%; height: auto; display: block; }
+.chart .grid { stroke: var(--border); stroke-width: 1; }
+.chart .zero { stroke: var(--muted); stroke-width: 1; opacity: 0.6; }
+.chart .axis { fill: var(--muted); font-size: 11px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.chart { margin: 0; }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 0.85rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
 
-:focus-visible {
-  outline: 2px solid var(--accent-focus);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
+.decisions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.decision { padding: 10px 0; border-top: 1px solid var(--border); }
+.decision:first-child { border-top: 0; }
+.decision-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.thesis { margin: 6px 0 0; white-space: pre-wrap; }
+.note { color: var(--cover); }
+.journal { white-space: pre-wrap; color: var(--muted); }
 
-button {
-  font-family: var(--font-mono);
-  cursor: pointer;
-}
+.pill { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 999px; }
+.pill-buy { color: var(--buy); background: #34d3991a; }
+.pill-sell { color: var(--sell); background: #fb71851a; }
+.pill-short { color: var(--short); background: #60a5fa1a; }
+.pill-cover { color: var(--cover); background: #fbbf241a; }
+.status { font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); color: var(--muted); }
+.status-submitted { color: var(--up); border-color: #34d39955; }
+.status-rejected, .status-error { color: var(--down); border-color: #fb718555; }
+.agent-tag { font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; }
+.agent-tag.analyst { color: var(--analyst); background: #a78bfa1a; }
+.agent-tag.monkey { color: var(--monkey); background: #f59e0b1a; }
 
-textarea {
-  font-family: var(--font-mono);
-}
+.run { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+details summary { cursor: pointer; }
 
-/* Slim, unobtrusive scrollbar that matches the dark theme instead of the
-   bright default OS scrollbar. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-hairline) transparent;
-}
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-thumb {
-  background: var(--border-hairline);
-  border-radius: 8px;
-}
-
-/* Shared surface treatment: every bordered panel in the app (agent cards,
-   stat blocks, chart containers, position cards) opts into this for
-   consistent depth + a gentle lift on hover instead of a static flat box. */
-.card {
-  box-shadow: var(--shadow-card);
-  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
-}
-a.card,
-.card.card-interactive {
-  cursor: pointer;
-}
-a.card:hover,
-.card.card-interactive:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card-hover);
-  border-color: #2c3349 !important;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: border-color 0.15s var(--ease), color 0.15s var(--ease), background 0.15s var(--ease), transform 0.15s var(--ease);
-}
-.btn:hover {
-  border-color: #2c3349;
-  color: var(--text-primary);
-  transform: translateY(-1px);
-}
-.btn:active {
-  transform: translateY(0);
-}
-
-/* Portfolio heatmap tiles (app/agent/[id]/positions/PortfolioHeatmap.tsx):
-   hover brightens the tile and reveals a details tooltip. Pure-CSS so the
-   component itself can stay a server component. */
-.heatmap-tile {
-  transition: filter 0.15s var(--ease);
-}
-.heatmap-tile:hover {
-  filter: brightness(1.18);
-  z-index: 5;
-}
-.heatmap-tooltip {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg-surface-2);
-  border: 1px solid var(--border-hairline);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 11px;
-  line-height: 1.6;
-  color: var(--text-primary);
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.12s var(--ease);
-  z-index: 20;
-  box-shadow: var(--shadow-card-hover);
-}
-.heatmap-tile:hover .heatmap-tooltip {
-  opacity: 1;
-  visibility: visible;
-}
-
-.btn-primary {
-  border: none;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  transition: filter 0.15s var(--ease), transform 0.15s var(--ease), opacity 0.15s var(--ease);
-}
-.btn-primary:hover:not(:disabled) {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
-}
-.btn-primary:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.input {
-  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
-}
-.input:focus {
-  outline: none;
-  border-color: var(--accent-focus) !important;
-  box-shadow: 0 0 0 3px var(--accent-focus-dim, rgba(125, 211, 252, 0.15));
-}
-
-/* Page-transition fade/rise, used by app/page-transition.tsx. Respects
-   reduced-motion below. */
-@keyframes page-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.page-fade-in {
-  animation: page-fade-in 0.32s var(--ease) both;
-}
-
-/* Stagger entrance for grids/lists of cards (agent overview, position
-   lists). Each item fades up with a short delay multiplied by --stagger-i,
-   set inline per-item. Rare/occasional (page load, route change only) —
-   never used on anything that re-renders from user interaction. */
-@keyframes stagger-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.stagger-item {
-  animation: stagger-fade-up 0.36s var(--ease-out) both;
-  animation-delay: calc(var(--stagger-i, 0) * 45ms);
-}
-
-/* Sparkline draw-in: relies on pathLength={1} on the SVG element so the
-   dash math is resolution-independent. Plays once on mount/route change. */
-@keyframes sparkline-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-.sparkline-draw {
-  stroke-dasharray: 1;
-  animation: sparkline-draw 0.7s var(--ease-out) both;
-  animation-delay: calc(var(--stagger-i, 0) * 45ms + 80ms);
-}
-
-/* Comparison chart: line draws in once on mount, hover tooltip/dot pop in
-   from the point the cursor is at rather than snapping into existence. */
-@keyframes chart-line-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-.chart-line-draw {
-  stroke-dasharray: 1;
-  animation: chart-line-draw 0.6s var(--ease-out) both;
-}
-@keyframes chart-pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-.chart-dot-pop {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: chart-pop-in 0.15s var(--ease-out) both;
-}
-.chart-tooltip-pop {
-  transform-origin: top right;
-  animation: chart-pop-in 0.16s var(--ease-out) both;
-}
-.chart-cursor-fade {
-  animation: fade-in 0.12s var(--ease-out) both;
-}
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Sliding pill indicator behind segmented sub-nav tabs (Log/Positions/
-   Brief). Position/width are set inline by AgentSubNav from measured tab
-   rects; only transform animates so it stays on the GPU. */
-.subnav-indicator {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  border-radius: 999px;
-  transition: transform 0.22s var(--ease-out), width 0.22s var(--ease-out), background 0.15s var(--ease);
-  will-change: transform;
-}
-
-/* Skeleton loading shimmer (see app/skeletons.tsx). A soft sweep across a
-   surface-toned bone; goes static under prefers-reduced-motion below. */
-.skeleton {
-  background: linear-gradient(
-    100deg,
-    var(--bg-surface-2) 40%,
-    color-mix(in srgb, var(--bg-surface-2) 60%, var(--border-hairline)) 50%,
-    var(--bg-surface-2) 60%
-  );
-  background-size: 300% 100%;
-  animation: skeleton-sweep 1.4s ease-in-out infinite;
-}
-
-@keyframes skeleton-sweep {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
-}
-
-/* Sub-nav tab labels collapse to icons on phones so five tabs stay evenly
-   divided instead of squeezing around their longest label. */
-@media (max-width: 480px) {
-  .sliding-tab-label {
-    display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skeleton,
-  .page-fade-in,
-  .stagger-item,
-  .sparkline-draw,
-  .chart-line-draw,
-  .chart-dot-pop,
-  .chart-tooltip-pop,
-  .chart-cursor-fade {
-    animation: none;
-  }
-  .sparkline-draw,
-  .chart-line-draw {
-    stroke-dasharray: none;
-  }
-  .card,
-  a.card:hover,
-  .card.card-interactive:hover,
-  .btn,
-  .btn-primary {
-    transition: none;
-    transform: none;
-  }
-  .subnav-indicator {
-    transition: none;
-  }
-}
-
-/* Mobile bottom tab bar: hidden by default (desktop/tablet shows the
-   horizontal nav in the header instead), becomes a fixed app-like tab bar
-   on phones. See app/nav.tsx. */
-.mobile-tabbar {
-  display: none;
-}
-
-@media (max-width: 520px) {
-  .desktop-nav {
-    display: none !important;
-  }
-
-  .mobile-tabbar {
-    display: flex;
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    z-index: 30;
-    justify-content: space-around;
-    padding: 8px 4px;
-    border-radius: 18px;
-    background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--border-hairline);
-    box-shadow: var(--shadow-card-hover);
-  }
-
-  .mobile-tabbar-item {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    flex: 1;
-    padding: 4px 0 2px;
-    text-decoration: none;
-    transition: color 0.15s var(--ease);
-  }
-
-  .mobile-tabbar-dot {
-    position: absolute;
-    top: -7px;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-  }
-}
-
-/* Phones: tighter padding, slightly smaller display type, and a minimum
-   tap-target height on links/buttons so things are comfortable with a
-   thumb instead of a cursor. */
-@media (max-width: 520px) {
-  main {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
-    padding-bottom: 112px !important;
-  }
-
-  header {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
-    padding-top: 20px !important;
-  }
-
-  a,
-  button {
-    min-height: 32px;
-  }
-}
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th { text-align: left; color: var(--muted); font-weight: 500; font-size: 0.78rem; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+td { padding: 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
